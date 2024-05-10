@@ -24,15 +24,25 @@ from openpilot.selfdrive.frogpilot.controls.lib.frogpilot_variables import CITY_
 GearShifter = car.CarState.GearShifter
 
 # Acceleration profiles - Credit goes to the DragonPilot team!
+                 # MPH = [0., 18,  36,  63,  94]
+A_CRUISE_MIN_BP_CUSTOM = [0., 8., 16., 28., 42.]
                  # MPH = [0., 6.71, 13.4, 17.9, 24.6, 33.6, 44.7, 55.9, 67.1, 123]
 A_CRUISE_MAX_BP_CUSTOM = [0.,    3,   6.,   8.,  11.,  15.,  20.,  25.,  30., 55.]
 
+A_CRUISE_MIN_VALS_ECO = [-0.001, -0.010, -0.28, -0.56, -0.56]
 A_CRUISE_MAX_VALS_ECO = [3.5, 3.2, 2.3, 2.0, 1.15, .80, .58, .36, .30, .091]
 
+A_CRUISE_MIN_VALS_SPORT = [-0.50, -0.52, -0.55, -0.57, -0.60]
 A_CRUISE_MAX_VALS_SPORT = [3.5, 3.5, 3.3, 2.8, 1.5, 1.0, .75, .6, .38, .2]
+
+def get_min_accel_eco(v_ego):
+  return interp(v_ego, A_CRUISE_MIN_BP_CUSTOM, A_CRUISE_MIN_VALS_ECO)
 
 def get_max_accel_eco(v_ego):
   return interp(v_ego, A_CRUISE_MAX_BP_CUSTOM, A_CRUISE_MAX_VALS_ECO)
+
+def get_min_accel_sport(v_ego):
+  return interp(v_ego, A_CRUISE_MIN_BP_CUSTOM, A_CRUISE_MIN_VALS_SPORT)
 
 def get_max_accel_sport(v_ego):
   return interp(v_ego, A_CRUISE_MAX_BP_CUSTOM, A_CRUISE_MAX_VALS_SPORT)
@@ -69,6 +79,15 @@ class FrogPilotPlanner:
       self.max_accel = ACCEL_MAX
     else:
       self.max_accel = get_max_accel(v_ego)
+
+    if frogpilot_toggles.deceleration_profile == 1:
+      self.min_accel = get_min_accel_eco(v_ego)
+    elif frogpilot_toggles.deceleration_profile == 2:
+      self.min_accel = get_min_accel_sport(v_ego)
+    elif controlsState.experimentalMode:
+      self.min_accel = ACCEL_MIN
+    else:
+      self.min_accel = A_CRUISE_MIN
 
     self.base_acceleration_jerk, self.base_speed_jerk = get_jerk_factor(frogpilot_toggles.custom_personalities,
                                                                         frogpilot_toggles.aggressive_jerk_acceleration, frogpilot_toggles.aggressive_jerk_speed,
@@ -117,6 +136,7 @@ class FrogPilotPlanner:
     frogpilotPlan.egoJerk = J_EGO_COST * float(self.speed_jerk)
     frogpilotPlan.egoJerkStock = J_EGO_COST * float(self.base_speed_jerk)
     frogpilotPlan.maxAcceleration = self.max_accel
+    frogpilotPlan.minAcceleration = self.min_accel
     frogpilotPlan.tFollow = float(self.t_follow)
     frogpilotPlan.vCruise = float(self.v_cruise)
 
