@@ -5,6 +5,10 @@ from openpilot.common.params import Params
 from openpilot.selfdrive.frogpilot.controls.lib.frogpilot_functions import MovingAverageCalculator
 from openpilot.selfdrive.frogpilot.controls.lib.frogpilot_variables import CITY_SPEED_LIMIT, CRUISING_SPEED, PROBABILITY
 
+SLOW_DOWN_BP = [0., 10., 20., 30., 40., 50., 55., 60.]
+SLOW_DOWN_DISTANCE = [20, 30., 50., 70., 80., 90., 105., 120.]
+TRAJECTORY_SIZE = 33
+
 class ConditionalExperimentalMode:
   def __init__(self):
     self.params_memory = Params("/dev/shm/params")
@@ -12,14 +16,20 @@ class ConditionalExperimentalMode:
     self.curve_detected = False
     self.experimental_mode = False
     self.lead_detected = False
+    self.red_light_detected = False
     self.slower_lead_detected = False
 
     self.previous_status_value = 0
+    self.previous_v_ego = 0
+    self.previous_v_lead = 0
     self.status_value = 0
 
     self.curvature_mac = MovingAverageCalculator()
     self.lead_detection_mac = MovingAverageCalculator()
+    self.lead_slowing_down_mac = MovingAverageCalculator()
     self.slow_lead_mac = MovingAverageCalculator()
+    self.slowing_down_mac = MovingAverageCalculator()
+    self.stop_light_mac = MovingAverageCalculator()
 
   def update(self, carState, enabled, frogpilotNavigation, modelData, radarState, road_curvature, t_follow, v_ego, frogpilot_toggles):
     lead = radarState.leadOne
@@ -45,6 +55,10 @@ class ConditionalExperimentalMode:
       self.status_value = 0
       return self.experimental_mode
 
+    # Keep Experimental Mode active if stopping for a red light
+    if self.status_value == 15 and self.slowing_down(v_ego):
+      return True
+
     approaching_maneuver = modelData.navEnabled and (frogpilotNavigation.approachingIntersection or frogpilotNavigation.approachingTurn)
     if frogpilot_toggles.conditional_navigation and approaching_maneuver and (frogpilot_toggles.conditional_navigation_lead or not self.lead_detected):
       self.status_value = 7 if frogpilotNavigation.approachingIntersection else 8
@@ -62,17 +76,39 @@ class ConditionalExperimentalMode:
       self.status_value = 14
       return True
 
+    if frogpilot_toggles.conditional_stop_lights and self.red_light_detected:
+      self.status_value = 15
+      return True
+
     return False
 
   def update_conditions(self, lead_distance, lead_status, modelData, road_curvature, standstill, t_follow, v_ego, v_lead, frogpilot_toggles):
     self.lead_detection(lead_status)
     self.road_curvature(road_curvature, v_ego, frogpilot_toggles)
     self.slow_lead(lead_distance, t_follow, v_ego)
+    self.stop_sign_and_light(lead_distance, modelData, standstill, v_ego, v_lead, frogpilot_toggles)
 
   def lead_detection(self, lead_status):
     self.lead_detection_mac.add_data(lead_status)
     self.lead_detected = self.lead_detection_mac.get_moving_average() >= PROBABILITY
 
+  def lead_slowing_down(self, lead_distance, v_ego, v_lead):
+    if self.lead_detected:
+      lead_close = lead_distance < CITY_SPEED_LIMIT
+      lead_far = lead_distance >= CITY_SPEED_LIMIT and (v_lead >= self.previous_v_lead > 1 or v_lead > v_ego)
+      lead_slowing_down = v_lead < self.previous_v_lead
+      lead_stopped = v_lead < 1
+
+      self.previous_v_lead = v_lead
+
+      self.lead_slowing_down_mac.add_data((lead_close or lead_slowing_down or lead_stopped) and not lead_far)
+      return self.lead_slowing_down_mac.get_moving_average() >= PROBABILITY
+    else:
+      self.lead_slowing_down_mac.reset_data()
+      self.previous_v_lead = 0
+      return False
+
+  # Determine the road curvature - Credit goes to to Pfeiferj!
   def road_curvature(self, road_curvature, v_ego, frogpilot_toggles):
     lead_check = frogpilot_toggles.conditional_curves_lead or not self.lead_detected
 
@@ -95,3 +131,24 @@ class ConditionalExperimentalMode:
     else:
       self.slow_lead_mac.reset_data()
       self.slower_lead_detected = False
+
+  def slowing_down(self, v_ego):
+    slowing_down = v_ego <= self.previous_v_ego
+    speed_check = v_ego < CRUISING_SPEED
+
+    self.previous_v_ego = v_ego
+
+    self.slowing_down_mac.add_data(slowing_down and speed_check)
+    return self.slowing_down_mac.get_moving_average() >= PROBABILITY
+
+  # Stop sign/stop light detection - Credit goes to the DragonPilot team!
+  def stop_sign_and_light(self, lead_distance, modelData, standstill, v_ego, v_lead, frogpilot_toggles):
+    lead_check = frogpilot_toggles.conditional_stop_lights_lead or not self.lead_slowing_down(lead_distance, v_ego, v_lead) or standstill
+
+    model_check = len(modelData.orientation.x) == len(modelData.position.x) == TRAJECTORY_SIZE
+    model_stopping = modelData.position.x[TRAJECTORY_SIZE - 1] < interp(v_ego * CV.MS_TO_KPH, SLOW_DOWN_BP, SLOW_DOWN_DISTANCE)
+
+    model_filtered = not (self.curve_detected or self.slower_lead_detected)
+
+    self.stop_light_mac.add_data(lead_check and model_check and model_stopping and model_filtered)
+    self.red_light_detected = self.stop_light_mac.get_moving_average() >= PROBABILITY
