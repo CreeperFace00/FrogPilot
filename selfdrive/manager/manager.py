@@ -2,6 +2,7 @@
 import datetime
 import os
 import signal
+import subprocess
 import sys
 import traceback
 
@@ -20,6 +21,7 @@ from openpilot.system.version import is_dirty, get_commit, get_version, get_orig
                            get_normalized_origin, terms_version, training_version, \
                            is_tested_branch, is_release_branch, get_commit_date
 
+from openpilot.selfdrive.frogpilot.controls.lib.frogpilot_functions import FrogPilotFunctions
 
 
 def manager_init() -> None:
@@ -176,6 +178,14 @@ def manager_thread() -> None:
 
 
 def main() -> None:
+  frogpilot_functions = FrogPilotFunctions()
+
+  try:
+    frogpilot_functions.setup_frogpilot()
+  except subprocess.CalledProcessError as e:
+    print(f"Failed to setup FrogPilot. Error: {e}")
+    return
+
   manager_init()
   if os.getenv("PREPAREONLY") is not None:
     return
@@ -194,7 +204,7 @@ def main() -> None:
   params = Params()
   if params.get_bool("DoUninstall"):
     cloudlog.warning("uninstalling")
-    HARDWARE.uninstall()
+    frogpilot_functions.uninstall_frogpilot()
   elif params.get_bool("DoReboot"):
     cloudlog.warning("reboot")
     HARDWARE.reboot()
