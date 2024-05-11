@@ -622,6 +622,10 @@ AnnotatedCameraWidget::AnnotatedCameraWidget(VisionStreamType type, QWidget* par
   QHBoxLayout *buttons_layout = new QHBoxLayout();
   buttons_layout->setSpacing(0);
 
+  // Neokii screen recorder
+  recorder = new ScreenRecorder(this);
+  buttons_layout->addWidget(recorder);
+
   experimental_btn = new ExperimentalButton(this);
   buttons_layout->addWidget(experimental_btn);
 
@@ -1175,8 +1179,12 @@ void AnnotatedCameraWidget::drawLead(QPainter &painter, const cereal::ModelDataV
 }
 
 void AnnotatedCameraWidget::paintGL() {
+}
+
+void AnnotatedCameraWidget::paintEvent(QPaintEvent *event) {
   UIState *s = uiState();
   SubMaster &sm = *(s->sm);
+  QPainter painter(this);
   const double start_draw_t = millis_since_boot();
   const cereal::ModelDataV2::Reader &model = sm["modelV2"].getModelV2();
   const float v_ego = sm["carState"].getCarState().getVEgo();
@@ -1221,11 +1229,12 @@ void AnnotatedCameraWidget::paintGL() {
     } else {
       CameraWidget::updateCalibration(DEFAULT_CALIBRATION);
     }
+    painter.beginNativePainting();
     CameraWidget::setFrameId(model.getFrameId());
     CameraWidget::paintGL();
+    painter.endNativePainting();
   }
 
-  QPainter painter(this);
   painter.setRenderHint(QPainter::Antialiasing);
   painter.setPen(Qt::NoPen);
 
@@ -1347,6 +1356,15 @@ void AnnotatedCameraWidget::initializeFrogPilotWidgets() {
   connect(animationTimer, &QTimer::timeout, this, [this] {
     animationFrameIndex = (animationFrameIndex + 1) % totalFrames;
   });
+
+  // Initialize the timer for the screen recorder
+  record_timer = std::make_shared<QTimer>();
+  QObject::connect(record_timer.get(), &QTimer::timeout, [=]() {
+    if (recorder) {
+      recorder->update_screen();
+    }
+  });
+  record_timer->start(1000 / UI_FREQ);
 }
 
 void AnnotatedCameraWidget::updateFrogPilotWidgets() {
@@ -1502,6 +1520,8 @@ void AnnotatedCameraWidget::paintFrogPilotWidgets(QPainter &p) {
     map_settings_btn_bottom->setVisible(!hideBottomIcons && !compass && !scene.hide_map_icon);
     bottom_layout->setAlignment(map_settings_btn_bottom, rightHandDM ? Qt::AlignLeft : Qt::AlignRight);
   }
+
+  recorder->setVisible(scene.screen_recorder && !mapOpen);
 }
 
 Compass::Compass(QWidget *parent) : QWidget(parent), scene(uiState()->scene) {
