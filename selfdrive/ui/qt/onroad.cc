@@ -646,9 +646,8 @@ void AnnotatedCameraWidget::drawLaneLines(QPainter &painter, const UIState *s) {
     float minLaneWidth = laneDetectionWidth * 0.5;
     float maxLaneWidth = laneDetectionWidth * 1.5;
 
-    auto paintLane = [=](QPainter &painter, const QPolygonF &lane, float laneWidth, bool blindspot) {
+    auto paintLane = [&](const QPolygonF &lane, float laneWidth, bool blindspot) {
       QLinearGradient al(0, height(), 0, 0);
-
       bool redPath = laneWidth < minLaneWidth || laneWidth > maxLaneWidth || blindspot;
       float hue = redPath ? 0.0 : 120.0 * (laneWidth - minLaneWidth) / (maxLaneWidth - minLaneWidth);
 
@@ -670,8 +669,24 @@ void AnnotatedCameraWidget::drawLaneLines(QPainter &painter, const UIState *s) {
       painter.setPen(Qt::NoPen);
     };
 
-    paintLane(painter, scene.track_adjacent_vertices[4], laneWidthLeft, blindSpotLeft);
-    paintLane(painter, scene.track_adjacent_vertices[5], laneWidthRight, blindSpotRight);
+    paintLane(scene.track_adjacent_vertices[4], laneWidthLeft, blindSpotLeft);
+    paintLane(scene.track_adjacent_vertices[5], laneWidthRight, blindSpotRight);
+  }
+
+  // Paint blindspot path
+  if (scene.blind_spot_path) {
+    QLinearGradient bs(0, height(), 0, 0);
+    bs.setColorAt(0.0, QColor::fromHslF(0 / 360., 0.75, 0.50, 0.6));
+    bs.setColorAt(0.5, QColor::fromHslF(0 / 360., 0.75, 0.50, 0.4));
+    bs.setColorAt(1.0, QColor::fromHslF(0 / 360., 0.75, 0.50, 0.2));
+
+    painter.setBrush(bs);
+    if (blindSpotLeft) {
+      painter.drawPolygon(scene.track_adjacent_vertices[4]);
+    }
+    if (blindSpotRight) {
+      painter.drawPolygon(scene.track_adjacent_vertices[5]);
+    }
   }
 
   painter.restore();
