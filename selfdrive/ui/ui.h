@@ -295,6 +295,7 @@ typedef struct UIScene {
   int custom_signals;
   int desired_follow;
   int driver_camera_timer;
+  int map_style;
   int obstacle_distance;
   int obstacle_distance_stock;
   int steering_angle_deg;
