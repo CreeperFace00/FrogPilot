@@ -18,6 +18,7 @@ from openpilot.selfdrive.frogpilot.controls.frogpilot_planner import FrogPilotPl
 from openpilot.selfdrive.frogpilot.controls.lib.frogpilot_functions import FrogPilotFunctions
 from openpilot.selfdrive.frogpilot.controls.lib.frogpilot_variables import FrogPilotVariables
 from openpilot.selfdrive.frogpilot.controls.lib.model_manager import DEFAULT_MODEL, DEFAULT_MODEL_NAME, download_model, populate_models
+from openpilot.selfdrive.frogpilot.controls.lib.theme_manager import ThemeManager
 
 WIFI = log.DeviceState.NetworkType.wifi
 
@@ -79,6 +80,7 @@ def frogpilot_thread(frogpilot_toggles):
   params_memory = Params("/dev/shm/params")
 
   frogpilot_functions = FrogPilotFunctions()
+  theme_manager = ThemeManager()
 
   CP = None
   current_day = None
@@ -138,6 +140,8 @@ def frogpilot_thread(frogpilot_toggles):
       if now.day != current_day:
         params.remove("FingerprintLogged")
         current_day = now.day
+
+      theme_manager.update_holiday()
 
     first_run = False
 
