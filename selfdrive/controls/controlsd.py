@@ -80,6 +80,7 @@ class Controls:
 
     self.drive_distance = 0
     self.drive_time = 0
+    self.previous_lead_distance = 0
     self.previous_speed_limit = 0
     self.speed_limit_timer = 0
 
@@ -940,6 +941,20 @@ class Controls:
       self.green_light_mac.add_data(green_light)
       if self.green_light_mac.get_moving_average() >= PROBABILITY:
         self.events.add(EventName.greenLight)
+
+    if self.frogpilot_toggles.lead_departing_alert and self.sm.frame % 50 == 0:
+      lead = self.sm['radarState'].leadOne
+      lead_distance = lead.dRel
+
+      lead_departing = lead_distance - self.previous_lead_distance > 0.5 and self.previous_lead_distance != 0 and CS.standstill
+      self.previous_lead_distance = lead_distance
+
+      lead_departing &= not CS.gasPressed
+      lead_departing &= lead.vLead > 1
+      lead_departing &= self.driving_gear
+
+      if lead_departing:
+        self.events.add(EventName.leadDeparting)
 
     if self.frogpilot_toggles.speed_limit_alert or self.frogpilot_toggles.speed_limit_confirmation:
       current_speed_limit = self.sm['frogpilotPlan'].slcSpeedLimit
