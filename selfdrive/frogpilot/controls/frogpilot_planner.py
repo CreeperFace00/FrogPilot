@@ -86,20 +86,34 @@ class FrogPilotPlanner:
     v_ego = max(carState.vEgo, 0)
     v_lead = self.lead_one.vLead
 
-    if frogpilot_toggles.acceleration_profile == 1:
-      self.max_accel = get_max_accel_eco(v_ego)
-    elif frogpilot_toggles.acceleration_profile in (2, 3):
-      self.max_accel = get_max_accel_sport(v_ego)
-    elif controlsState.experimentalMode:
-      self.max_accel = ACCEL_MAX
+    eco_gear = carState.gearShifter == GearShifter.eco or frogpilotCarState.ecoGear
+    sport_gear = carState.gearShifter == GearShifter.sport or frogpilotCarState.sportGear
+
+    if frogpilot_toggles.map_acceleration and (eco_gear or sport_gear):
+      if eco_gear:
+        self.max_accel = get_max_accel_eco(v_ego)
+      elif sport_gear:
+        self.max_accel = get_max_accel_sport(v_ego)
     else:
-      self.max_accel = get_max_accel(v_ego)
+      if frogpilot_toggles.acceleration_profile == 1:
+        self.max_accel = get_max_accel_eco(v_ego)
+      elif frogpilot_toggles.acceleration_profile in (2, 3):
+        self.max_accel = get_max_accel_sport(v_ego)
+      elif controlsState.experimentalMode:
+        self.max_accel = ACCEL_MAX
+      else:
+        self.max_accel = get_max_accel(v_ego)
 
     if v_cruise_changed:
       if controlsState.experimentalMode:
         self.min_accel = ACCEL_MIN
       else:
         self.min_accel = A_CRUISE_MIN
+    elif frogpilot_toggles.map_deceleration and (eco_gear or sport_gear):
+      if eco_gear:
+        self.min_accel = get_min_accel_eco(v_ego)
+      elif sport_gear:
+        self.min_accel = get_min_accel_sport(v_ego)
     else:
       if frogpilot_toggles.deceleration_profile == 1:
         self.min_accel = get_min_accel_eco(v_ego)
