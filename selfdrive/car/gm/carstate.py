@@ -170,6 +170,9 @@ class CarState(CarStateBase):
         ret.rightBlindspot = cam_cp.vl["BCMBlindSpotMonitor"]["RightBSM"] == 1
 
     # FrogPilot carstate functions
+    if self.CP.flags & GMFlags.SPORT_MODE.value:
+      fp_ret.sportGear = pt_cp.vl["SportMode"]["SportMode"] == 1
+
     self.lkas_previously_enabled = self.lkas_enabled
     if self.CP.carFingerprint in SDGM_CAR:
       self.lkas_enabled = cam_cp.vl["ASCMSteeringButton"]["LKAButton"]
@@ -235,6 +238,9 @@ class CarState(CarStateBase):
       ]
       if CP.enableBsm:
         messages.append(("BCMBlindSpotMonitor", 10))
+
+    if CP.flags & GMFlags.SPORT_MODE.value:
+      messages.append(("SportMode", 0))
 
     # Used to read back last counter sent to PT by camera
     if CP.networkLocation == NetworkLocation.fwdCamera:
