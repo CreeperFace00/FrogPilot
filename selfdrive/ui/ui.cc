@@ -284,6 +284,10 @@ void ui_update_frogpilot_params(UIState *s) {
   scene.use_kaofui_icons = scene.onroad_distance_button && params.getBool("KaofuiIcons");
 
   scene.experimental_mode_via_screen = scene.longitudinal_control && params.getBool("ExperimentalModeActivation") && params.getBool("ExperimentalModeViaTap");
+
+  bool quality_of_life_controls = params.getBool("QOLControls");
+  scene.reverse_cruise = quality_of_life_controls && params.getBool("ReverseCruise");
+  scene.reverse_cruise_ui = params.getBool("ReverseCruiseUI");
 }
 
 void UIState::updateStatus() {
