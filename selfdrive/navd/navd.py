@@ -74,6 +74,8 @@ class RouteEngine:
     self.approaching_intersection = False
     self.approaching_turn = False
 
+    self.nav_speed_limit = 0
+
   def update(self):
     self.sm.update(0)
 
@@ -274,6 +276,7 @@ class RouteEngine:
 
     if self.step_idx is None:
       msg.valid = False
+      self.nav_speed_limit = 0
       self.pm.send('navInstruction', msg)
       return
 
@@ -348,6 +351,9 @@ class RouteEngine:
 
     if ('maxspeed' in closest.annotations) and self.localizer_valid:
       msg.navInstruction.speedLimit = closest.annotations['maxspeed']
+      self.nav_speed_limit = closest.annotations['maxspeed']
+    if not self.localizer_valid or ('maxspeed' not in closest.annotations):
+      self.nav_speed_limit = 0
 
     # Speed limit sign type
     if 'speedLimitSign' in step:
@@ -403,6 +409,7 @@ class RouteEngine:
 
     frogpilotNavigation.approachingIntersection = self.approaching_intersection
     frogpilotNavigation.approachingTurn = self.approaching_turn
+    frogpilotNavigation.navigationSpeedLimit = self.nav_speed_limit
 
     self.pm.send('frogpilotNavigation', frogpilot_plan_send)
 
