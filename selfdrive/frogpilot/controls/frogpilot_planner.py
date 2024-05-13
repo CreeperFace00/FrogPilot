@@ -35,6 +35,8 @@ A_CRUISE_MAX_VALS_ECO = [3.5, 3.2, 2.3, 2.0, 1.15, .80, .58, .36, .30, .091]
 A_CRUISE_MIN_VALS_SPORT = [-0.50, -0.52, -0.55, -0.57, -0.60]
 A_CRUISE_MAX_VALS_SPORT = [3.5, 3.5, 3.3, 2.8, 1.5, 1.0, .75, .6, .38, .2]
 
+TRAFFIC_MODE_BP = [0., CITY_SPEED_LIMIT]
+
 def get_min_accel_eco(v_ego):
   return interp(v_ego, A_CRUISE_MIN_BP_CUSTOM, A_CRUISE_MIN_VALS_ECO)
 
@@ -89,14 +91,19 @@ class FrogPilotPlanner:
     else:
       self.min_accel = A_CRUISE_MIN
 
-    self.base_acceleration_jerk, self.base_speed_jerk = get_jerk_factor(frogpilot_toggles.custom_personalities,
-                                                                        frogpilot_toggles.aggressive_jerk_acceleration, frogpilot_toggles.aggressive_jerk_speed,
-                                                                        frogpilot_toggles.standard_jerk_acceleration, frogpilot_toggles.standard_jerk_speed,
-                                                                        frogpilot_toggles.relaxed_jerk_acceleration, frogpilot_toggles.relaxed_jerk_speed,
-                                                                        controlsState.personality)
+    if frogpilotCarControl.trafficModeActive:
+      self.base_acceleration_jerk = interp(v_ego, TRAFFIC_MODE_BP, frogpilot_toggles.traffic_mode_jerk_acceleration)
+      self.base_speed_jerk = interp(v_ego, TRAFFIC_MODE_BP, frogpilot_toggles.traffic_mode_jerk_speed)
+      self.t_follow = interp(v_ego, TRAFFIC_MODE_BP, frogpilot_toggles.traffic_mode_t_follow)
+    else:
+      self.base_acceleration_jerk, self.base_speed_jerk = get_jerk_factor(frogpilot_toggles.custom_personalities,
+                                                                          frogpilot_toggles.aggressive_jerk_acceleration, frogpilot_toggles.aggressive_jerk_speed,
+                                                                          frogpilot_toggles.standard_jerk_acceleration, frogpilot_toggles.standard_jerk_speed,
+                                                                          frogpilot_toggles.relaxed_jerk_acceleration, frogpilot_toggles.relaxed_jerk_speed,
+                                                                          controlsState.personality)
 
-    self.t_follow = get_T_FOLLOW(frogpilot_toggles.custom_personalities, frogpilot_toggles.aggressive_follow,
-                                 frogpilot_toggles.standard_follow, frogpilot_toggles.relaxed_follow, controlsState.personality)
+      self.t_follow = get_T_FOLLOW(frogpilot_toggles.custom_personalities, frogpilot_toggles.aggressive_follow,
+                                   frogpilot_toggles.standard_follow, frogpilot_toggles.relaxed_follow, controlsState.personality)
 
     if self.lead_one.status and self.CP.openpilotLongitudinalControl:
       self.update_follow_values(frogpilotCarControl.trafficModeActive, v_ego, v_lead, frogpilot_toggles)
@@ -110,8 +117,8 @@ class FrogPilotPlanner:
     if frogpilot_toggles.conditional_experimental_mode:
       self.cem.update(carState, controlsState.enabled, frogpilotNavigation, self.lead_one, modelData, self.road_curvature, self.t_follow, v_ego, frogpilot_toggles)
 
-  def update_follow_values(self, v_ego, v_lead, frogpilot_toggles):
-    distance_offset = frogpilot_toggles.increased_stopping_distance + min(CITY_SPEED_LIMIT - v_ego, 0)
+  def update_follow_values(self, trafficModeActive, v_ego, v_lead, frogpilot_toggles):
+    distance_offset = frogpilot_toggles.increased_stopping_distance + min(CITY_SPEED_LIMIT - v_ego, 0) if not trafficModeActive else 0
     lead_distance = self.lead_one.dRel - distance_offset
     stopping_distance = STOP_DISTANCE + distance_offset
 
