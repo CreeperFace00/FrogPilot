@@ -183,6 +183,8 @@ class CarState(CarStateBase):
       self.main_enabled = not self.main_enabled
 
     # FrogPilot carstate functions
+    fp_ret.brakeLights = bool(cp.vl["TCS13"]["BrakeLight"])
+
     self.prev_distance_button = self.distance_button
     self.distance_button = self.cruise_buttons[-1] == Buttons.GAP_DIST
 
@@ -279,6 +281,8 @@ class CarState(CarStateBase):
                                           else cp_cam.vl["CAM_0x2a4"])
 
     # FrogPilot carstate functions
+    fp_ret.brakeLights = cp.vl["TCS"]["DriverBraking"] == 1
+
     self.prev_distance_button = self.distance_button
     self.distance_button = self.cruise_buttons[-1] == Buttons.GAP_DIST and self.prev_cruise_buttons == 0
 
