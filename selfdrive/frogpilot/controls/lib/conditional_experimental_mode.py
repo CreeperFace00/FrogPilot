@@ -31,8 +31,7 @@ class ConditionalExperimentalMode:
     self.slowing_down_mac = MovingAverageCalculator()
     self.stop_light_mac = MovingAverageCalculator()
 
-  def update(self, carState, enabled, frogpilotNavigation, modelData, radarState, road_curvature, t_follow, v_ego, frogpilot_toggles):
-    lead = radarState.leadOne
+  def update(self, carState, enabled, frogpilotNavigation, lead, modelData, road_curvature, t_follow, v_ego, frogpilot_toggles):
     lead_distance = lead.dRel
     standstill = carState.standstill
     v_lead = lead.vLead
