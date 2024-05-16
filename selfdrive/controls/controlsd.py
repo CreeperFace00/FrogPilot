@@ -71,6 +71,7 @@ class Controls:
     self.frogpilot_toggles = FrogPilotVariables.toggles
 
     self.drive_added = False
+    self.onroad_distance_pressed = False
     self.openpilot_crashed_triggered = False
 
     self.drive_distance = 0
@@ -682,9 +683,11 @@ class Controls:
 
     # decrement personality on distance button press
     if self.CP.openpilotLongitudinalControl:
-      if any(not be.pressed and be.type == ButtonType.gapAdjustCruise for be in CS.buttonEvents):
-        self.personality = (self.personality - 1) % 3
-        self.params.put_nonblocking('LongitudinalPersonality', str(self.personality))
+      if any(not be.pressed and be.type == ButtonType.gapAdjustCruise for be in CS.buttonEvents) or self.onroad_distance_pressed:
+        if self.params_memory.get_bool("OnroadDistanceButtonPressed")):
+          self.personality = (self.personality - 1) % 3
+          self.params.put_nonblocking('LongitudinalPersonality', str(self.personality))
+      self.onroad_distance_pressed = self.params_memory.get_bool("OnroadDistanceButtonPressed")
 
     return CC, lac_log
 
