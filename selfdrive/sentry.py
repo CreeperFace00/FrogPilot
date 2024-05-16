@@ -42,6 +42,25 @@ def set_tag(key: str, value: str) -> None:
   sentry_sdk.set_tag(key, value)
 
 
+def sentry_metrics(env) -> None:
+  if env == "Staging":
+    sentry_sdk.metrics.incr(
+      key="total_staging_users",
+      value=1,
+      tags={
+        "env": "staging"
+      }
+    )
+  else:
+    sentry_sdk.metrics.incr(
+      key="total_users",
+      value=1,
+      tags={
+        "env": "production"
+      }
+    )
+
+
 def init(project: SentryProject) -> bool:
   # forks like to mess with this, so double check
   comma_remote = is_comma_remote() and "commaai" in get_origin()
@@ -72,5 +91,7 @@ def init(project: SentryProject) -> bool:
 
   if project == SentryProject.SELFDRIVE:
     sentry_sdk.Hub.current.start_session()
+
+  sentry_metrics(env)
 
   return True
