@@ -470,6 +470,22 @@ DevicePanel::DevicePanel(SettingsWindow *parent) : ListWidget(parent) {
   });
   addItem(deleteDrivingDataBtn);
 
+  // Delete long term toggle storage button
+  auto deleteStorageParamsBtn = new ButtonControl(tr("Reset Toggle Settings"), tr("RESET"), tr("Reset your toggle settings back to their default settings.")
+  );
+  connect(deleteStorageParamsBtn, &ButtonControl::clicked, [=]() {
+    if (!ConfirmationDialog::confirm(tr("Are you sure you want to completely reset all of your toggle settings? This is unrecoverable."), tr("Reset"), this)) return;
+    std::thread([&] {
+      deleteStorageParamsBtn->setValue(tr("Resetting params..."));
+      std::system("rm -rf /data/params");
+      std::system("rm -rf /persist/params");
+      deleteStorageParamsBtn->setValue(tr("Reset! Rebooting..."));
+      std::this_thread::sleep_for(std::chrono::seconds(3));
+      Hardware::reboot();
+    }).detach();
+  });
+  addItem(deleteStorageParamsBtn);
+
   // Panda flashing button
   auto flashPandaBtn = new ButtonControl(tr("Flash Panda"), tr("FLASH"), tr("Use this button to troubleshoot and update the Panda device's firmware."));
   connect(flashPandaBtn, &ButtonControl::clicked, [=]() {
