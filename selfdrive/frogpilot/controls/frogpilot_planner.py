@@ -175,6 +175,8 @@ class FrogPilotPlanner:
 
     self.v_cruise = self.update_v_cruise(carState, controlsState, controlsState.enabled, frogpilotCarState, frogpilotNavigation, liveLocationKalman, modelData, road_curvature, v_cruise, v_ego, frogpilot_toggles)
 
+    self.params_memory.put_float("CSLCSpeed", self.v_cruise)
+
   def update_follow_values(self, acceleration_jerk, speed_jerk, t_follow, trafficModeActive, v_ego, v_lead, frogpilot_toggles):
     increased_distance = frogpilot_toggles.increased_stopping_distance + min(CITY_SPEED_LIMIT - v_ego, 0) if not trafficModeActive else 0
     lead_distance = self.lead_one.dRel - increased_distance
@@ -213,7 +215,10 @@ class FrogPilotPlanner:
     v_cruise_diff = v_cruise_cluster - v_cruise
 
     v_ego_cluster = max(carState.vEgoCluster, v_ego)
-    v_ego_diff = v_ego_cluster - v_ego
+    if frogpilot_toggles.CSLC:
+      v_ego_diff = 0
+    else:
+      v_ego_diff = v_ego_cluster - v_ego
 
     # Pfeiferj's Map Turn Speed Controller
     if frogpilot_toggles.map_turn_speed_controller and v_ego > CRUISING_SPEED and enabled and gps_check:

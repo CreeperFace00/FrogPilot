@@ -32,7 +32,8 @@ class FrogPilotVariables:
 
     car_name = CP.carName
     openpilot_longitudinal = CP.openpilotLongitudinalControl
-    pcm_cruise = CP.pcmCruise
+    toggles.CSLC = self.params.get_bool("CSLCEnabled")
+    pcm_cruise = CP.pcmCruise and not toggles.CSLC
 
     toggles.is_metric = self.params.get_bool("IsMetric")
     distance_conversion = 1 if toggles.is_metric else CV.FOOT_TO_METER

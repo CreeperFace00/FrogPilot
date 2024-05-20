@@ -458,7 +458,7 @@ def get_all_toggle_values():
     "SLCLookaheadLower", "SetSpeedLimit", "ShowSLCOffset", "ShowSLCOffsetUI", "UseVienna", "VisionTurnControl", "DisableVTSCSmoothing", "CurveSensitivity",
     "TurnAggressiveness", "AutomaticUpdates", "TetheringEnabled",
     "ForceFingerprint", "DisableOpenpilotLongitudinal", "LongPitch", "GasRegenCmd", "CrosstrekTorque", "ToyotaDoors", "LockDoors", "UnlockDoors", "StockTune",
-    "CydiaTune", "DragonPilotTune", "FrogsGoMooTune", "SNGHack",
+    "CydiaTune", "DragonPilotTune", "FrogsGoMooTune", "SNGHack", "CSLCEnabled",
     "AlertVolumeControl", "DisengageVolume", "EngageVolume", "PromptVolume", "PromptDistractedVolume", "RefuseVolume", "WarningSoftVolume",
     "WarningImmediateVolume", "CustomAlerts", "GreenLightAlert", "LeadDepartingAlert", "LoudBlindspotAlert", "CustomUI", "Compass", "CustomPaths",
     "AccelerationPath", "AdjacentPath", "BlindSpotPath", "AdjacentPathMetrics", "PedalsOnUI", "DynamicPedalsOnUI", "StaticPedalsOnUI", "RoadNameUI", "WheelIcon",

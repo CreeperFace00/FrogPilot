@@ -502,6 +502,13 @@ class Controls:
   def state_transition(self, CS):
     """Compute conditional state transitions and execute actions on state transitions"""
 
+    resume_pressed = any(be.type in (ButtonType.accelCruise, ButtonType.resumeCruise) for be in CS.buttonEvents)
+    set_pressed = any(be.type in (ButtonType.decelCruise, ButtonType.setCruise) for be in CS.buttonEvents)
+    if resume_pressed:
+      self.frogpilot_toggles.prev_button = ButtonType.resumeCruise
+    elif set_pressed:
+      self.frogpilot_toggles.prev_button = ButtonType.setCruise
+
     self.v_cruise_helper.update_v_cruise(CS, self.enabled, self.is_metric, self.FPCC.speedLimitChanged, self.frogpilot_toggles)
 
     # decrement the soft disable timer at every step, as it's reset on
@@ -851,6 +858,7 @@ class Controls:
     controlsState.canErrorCounter = self.card.can_rcv_cum_timeout_counter
     controlsState.experimentalMode = self.experimental_mode
     controlsState.personality = self.personality
+    self.frogpilot_toggles.experimentalMode = self.experimental_mode
 
     lat_tuning = self.CP.lateralTuning.which()
     if self.joystick_mode:
