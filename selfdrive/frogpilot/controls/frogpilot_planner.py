@@ -156,9 +156,16 @@ class FrogPilotPlanner:
 
     if self.lead_one.status and self.CP.openpilotLongitudinalControl:
       self.update_follow_values(frogpilotCarControl.trafficModeActive, v_ego, v_lead, frogpilot_toggles)
+
+      self.safe_obstacle_distance = int(np.mean(get_safe_obstacle_distance(v_ego, self.t_follow)))
+      self.safe_obstacle_distance_stock = int(np.mean(get_safe_obstacle_distance(v_ego, self.t_follow)))
+      self.stopped_equivalence_factor = int(np.mean(get_stopped_equivalence_factor(v_lead)))
     else:
       self.acceleration_jerk = self.base_acceleration_jerk
       self.speed_jerk = self.base_speed_jerk
+      self.safe_obstacle_distance = 0
+      self.safe_obstacle_distance_stock = 0
+      self.stopped_equivalence_factor = 0
 
     self.road_curvature = calculate_road_curvature(modelData, v_ego)
     self.v_cruise = self.update_v_cruise(carState, controlsState, controlsState.enabled, frogpilotCarState, frogpilotNavigation, liveLocationKalman, modelData, v_cruise, v_ego, frogpilot_toggles)
@@ -268,12 +275,16 @@ class FrogPilotPlanner:
     frogpilotPlan.accelerationJerkStock = A_CHANGE_COST * float(self.base_acceleration_jerk)
     frogpilotPlan.adjustedCruise = float(min(self.mtsc_target, self.vtsc_target) * (CV.MS_TO_KPH if frogpilot_toggles.is_metric else CV.MS_TO_MPH))
     frogpilotPlan.conditionalExperimental = self.cem.experimental_mode
+    frogpilotPlan.desiredFollowDistance = self.safe_obstacle_distance - self.stopped_equivalence_factor
     frogpilotPlan.egoJerk = J_EGO_COST * float(self.speed_jerk)
     frogpilotPlan.egoJerkStock = J_EGO_COST * float(self.base_speed_jerk)
     frogpilotPlan.laneWidthLeft = self.lane_width_left
     frogpilotPlan.laneWidthRight = self.lane_width_right
     frogpilotPlan.maxAcceleration = self.max_accel
     frogpilotPlan.minAcceleration = self.min_accel
+    frogpilotPlan.safeObstacleDistance = self.safe_obstacle_distance
+    frogpilotPlan.safeObstacleDistanceStock = self.safe_obstacle_distance_stock
+    frogpilotPlan.stoppedEquivalenceFactor = self.stopped_equivalence_factor
     frogpilotPlan.tFollow = float(self.t_follow)
     frogpilotPlan.vCruise = float(self.v_cruise)
 
