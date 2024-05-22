@@ -20,6 +20,7 @@ from openpilot.system.version import get_short_branch
 from openpilot.selfdrive.frogpilot.controls.lib.conditional_experimental_mode import ConditionalExperimentalMode
 from openpilot.selfdrive.frogpilot.controls.lib.frogpilot_functions import calculate_lane_width, calculate_road_curvature
 from openpilot.selfdrive.frogpilot.controls.lib.frogpilot_variables import CITY_SPEED_LIMIT, CRUISING_SPEED
+from openpilot.selfdrive.frogpilot.controls.lib.map_turn_speed_controller import MapTurnSpeedController
 
 GearShifter = car.CarState.GearShifter
 
@@ -56,10 +57,12 @@ class FrogPilotPlanner:
     self.params_memory = Params("/dev/shm/params")
 
     self.cem = ConditionalExperimentalMode()
+    self.mtsc = MapTurnSpeedController()
 
     self.acceleration_jerk = 0
     self.base_acceleration_jerk = 0
     self.base_speed_jerk = 0
+    self.mtsc_target = 0
     self.road_curvature = 0
     self.speed_jerk = 0
     self.t_follow = 0
@@ -69,6 +72,7 @@ class FrogPilotPlanner:
 
     v_cruise_kph = min(controlsState.vCruise, V_CRUISE_UNSET)
     v_cruise = v_cruise_kph * CV.KPH_TO_MS
+    v_cruise_changed = self.mtsc_target < v_cruise
 
     v_ego = max(carState.vEgo, 0)
     v_lead = self.lead_one.vLead
@@ -82,14 +86,20 @@ class FrogPilotPlanner:
     else:
       self.max_accel = get_max_accel(v_ego)
 
-    if frogpilot_toggles.deceleration_profile == 1:
-      self.min_accel = get_min_accel_eco(v_ego)
-    elif frogpilot_toggles.deceleration_profile == 2:
-      self.min_accel = get_min_accel_sport(v_ego)
-    elif controlsState.experimentalMode:
-      self.min_accel = ACCEL_MIN
+    if v_cruise_changed:
+      if controlsState.experimentalMode:
+        self.min_accel = ACCEL_MIN
+      else:
+        self.min_accel = A_CRUISE_MIN
     else:
-      self.min_accel = A_CRUISE_MIN
+      if frogpilot_toggles.deceleration_profile == 1:
+        self.min_accel = get_min_accel_eco(v_ego)
+      elif frogpilot_toggles.deceleration_profile == 2:
+        self.min_accel = get_min_accel_sport(v_ego)
+      elif controlsState.experimentalMode:
+        self.min_accel = ACCEL_MIN
+      else:
+        self.min_accel = A_CRUISE_MIN
 
     if frogpilotCarControl.trafficModeActive:
       self.base_acceleration_jerk = interp(v_ego, TRAFFIC_MODE_BP, frogpilot_toggles.traffic_mode_jerk_acceleration)
@@ -147,13 +157,27 @@ class FrogPilotPlanner:
       self.t_follow /= braking_offset
 
   def update_v_cruise(self, carState, controlsState, enabled, frogpilotCarState, frogpilotNavigation, liveLocationKalman, modelData, v_cruise, v_ego, frogpilot_toggles):
+    gps_check = (liveLocationKalman.status == log.LiveLocationKalman.Status.valid) and liveLocationKalman.positionGeodetic.valid and liveLocationKalman.gpsOK
+
     v_cruise_cluster = max(controlsState.vCruiseCluster, controlsState.vCruise) * CV.KPH_TO_MS
     v_cruise_diff = v_cruise_cluster - v_cruise
 
     v_ego_cluster = max(carState.vEgoCluster, v_ego)
     v_ego_diff = v_ego_cluster - v_ego
 
-    targets = []
+    # Pfeiferj's Map Turn Speed Controller
+    if frogpilot_toggles.map_turn_speed_controller and v_ego > CRUISING_SPEED and enabled and gps_check:
+      mtsc_active = self.mtsc_target < v_cruise
+      self.mtsc_target = np.clip(self.mtsc.target_speed(v_ego, carState.aEgo), CRUISING_SPEED, v_cruise)
+
+      if frogpilot_toggles.mtsc_curvature_check and self.road_curvature < 1.0 and not mtsc_active:
+        self.mtsc_target = v_cruise
+      if self.mtsc_target == CRUISING_SPEED:
+        self.mtsc_target = v_cruise
+    else:
+      self.mtsc_target = v_cruise
+
+    targets = [self.mtsc_target]
     filtered_targets = [target if target > CRUISING_SPEED else v_cruise for target in targets]
 
     return min(filtered_targets)
@@ -165,6 +189,7 @@ class FrogPilotPlanner:
 
     frogpilotPlan.accelerationJerk = A_CHANGE_COST * float(self.acceleration_jerk)
     frogpilotPlan.accelerationJerkStock = A_CHANGE_COST * float(self.base_acceleration_jerk)
+    frogpilotPlan.adjustedCruise = float(self.mtsc_target * (CV.MS_TO_KPH if frogpilot_toggles.is_metric else CV.MS_TO_MPH))
     frogpilotPlan.conditionalExperimental = self.cem.experimental_mode
     frogpilotPlan.egoJerk = J_EGO_COST * float(self.speed_jerk)
     frogpilotPlan.egoJerkStock = J_EGO_COST * float(self.base_speed_jerk)
