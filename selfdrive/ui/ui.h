@@ -205,6 +205,7 @@ typedef struct UIScene {
   bool fps_counter;
   bool has_auto_tune;
   bool holiday_themes;
+  bool lead_info;
   bool live_valid;
   bool map_open;
   bool online;
@@ -220,6 +221,7 @@ typedef struct UIScene {
   bool show_aol_status_bar;
   bool show_blind_spot;
   bool show_cem_status_bar;
+  bool show_jerk;
   bool show_signal;
   bool show_slc_offset;
   bool show_slc_offset_ui;
@@ -239,7 +241,12 @@ typedef struct UIScene {
   bool use_vienna_slc_sign;
   bool vtsc_controlling_curve;
 
+  float acceleration;
+  float acceleration_jerk;
+  float acceleration_jerk_difference;
   float adjusted_cruise;
+  float ego_jerk;
+  float ego_jerk_difference;
   float friction;
   float lane_detection_width;
   float lane_width_left;
@@ -261,7 +268,11 @@ typedef struct UIScene {
   int custom_colors;
   int custom_icons;
   int custom_signals;
+  int desired_follow;
+  int obstacle_distance;
+  int obstacle_distance_stock;
   int steering_angle_deg;
+  int stopped_equivalence;
   int wheel_icon;
 
   QPolygonF track_adjacent_vertices[6];
