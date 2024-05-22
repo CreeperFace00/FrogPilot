@@ -1,7 +1,7 @@
 from cereal import car, custom
 from panda import Panda
 from panda.python import uds
-from openpilot.selfdrive.car.toyota.values import Ecu, CAR, DBC, ToyotaFlags, CarControllerParams, TSS2_CAR, RADAR_ACC_CAR, NO_DSU_CAR, \
+from openpilot.selfdrive.car.toyota.values import Ecu, CAR, DBC, ToyotaFlags, FrogPilotToyotaFlags, CarControllerParams, TSS2_CAR, RADAR_ACC_CAR, NO_DSU_CAR, \
                                         MIN_ACC_SPEED, EPS_SCALE, UNSUPPORTED_DSU_CAR, NO_STOP_TIMER_CAR, ANGLE_CONTROL_CAR
 from openpilot.selfdrive.car import create_button_events, get_safety_config
 from openpilot.selfdrive.car.disable_ecu import disable_ecu
@@ -40,6 +40,9 @@ class CarInterface(CarInterfaceBase):
 
       ret.steerActuatorDelay = 0.12  # Default delay, Prius has larger delay
       ret.steerLimitTimer = 0.4
+
+      if 0x23 in fingerprint[0]:  # Detect if ZSS is present
+        ret.flags |= FrogPilotToyotaFlags.ZSS.value
 
     ret.stoppingControl = False  # Toyota starts braking more when it thinks you want to stop
 
