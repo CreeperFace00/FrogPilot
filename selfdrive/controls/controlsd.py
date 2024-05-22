@@ -396,6 +396,9 @@ class Controls:
       if self.sm['modelV2'].frameDropPerc > 20:
         self.events.add(EventName.modeldLagging)
 
+    # Update FrogPilot events
+    self.update_frogpilot_events(CS)
+
   def data_sample(self):
     """Receive data from sockets and update carState"""
 
@@ -840,6 +843,9 @@ class Controls:
 
     self.CS_prev = CS
 
+    # Update FrogPilot variables
+    self.update_frogpilot_variables(CS)
+
   def read_personality_param(self):
     try:
       return int(self.params.get('LongitudinalPersonality'))
@@ -867,6 +873,15 @@ class Controls:
       e.set()
       t.join()
 
+  def update_frogpilot_events(self, CS):
+
+  def update_frogpilot_variables(self, CS):
+    self.driving_gear = CS.gearShifter not in (GearShifter.neutral, GearShifter.park, GearShifter.reverse, GearShifter.unknown)
+
+    fpcc_send = messaging.new_message('frogpilotCarControl')
+    fpcc_send.valid = CS.canValid
+    fpcc_send.frogpilotCarControl = self.FPCC
+    self.pm.send('frogpilotCarControl', fpcc_send)
 
 def main():
   config_realtime_process(4, Priority.CTRL_HIGH)
